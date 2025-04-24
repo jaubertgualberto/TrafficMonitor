@@ -8,7 +8,7 @@ model = YOLO('models/cluster.pt')
 model.eval()
 
 
-input_path = 'inputs/input6.mp4'   
+input_path = 'inputs/input8.mp4'   
 cap = cv2.VideoCapture(input_path)
 if not cap.isOpened():
     raise IOError(f"Cannot open video {input_path}")

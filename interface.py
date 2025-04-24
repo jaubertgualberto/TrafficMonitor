@@ -41,6 +41,9 @@ class VehicleCounterApp:
         self.traffic_light_not_detected = True
         self.trafficWarning = True
 
+        self.car_count = 0
+        self.truck_count = 0
+
         # video and ui
         self.video_path = None
         self.cap = None
@@ -379,11 +382,14 @@ class VehicleCounterApp:
             if not self.is_playing: break
             frame = result.orig_img.copy()
 
-            # Check for traffic lights if self.traffic_light_not_detected is true
-            # if self.traffic_light_not_detected:
-            #     self.t
+            """
+            0: 'biker', 1: 'car', 2: 'pedestrian', 3: 'trafficLight',
+            4: 'trafficLight-Green',  5: 'trafficLight-GreenLeft', 6: 'trafficLight-Red', 
+            7: 'trafficLight-RedLeft', 8: 'trafficLight-Yellow', 9: 'trafficLight-YellowLeft', 
+            10: 'truck'
+            """
 
-            # print(type(frame))
+
 
             self.green_light = False
             
@@ -406,7 +412,7 @@ class VehicleCounterApp:
                         
 
                         # ignore non-vehicle classes
-                        if cls not in [0, 1, 10]:  # biker, car, truck
+                        if cls not in [1, 10]:  # biker, car, truck
                             continue
                         
 
@@ -430,6 +436,12 @@ class VehicleCounterApp:
                                     self.count += 1
                                     self.counted_ids.add(obj_id)
                                     frame_vehicles_count += 1
+
+                                    if cls == 1:
+                                        self.car_count += 1
+                                    elif cls == 10:
+                                        self.truck_count += 1
+
                             else:
                                 self.min_y[obj_id] = min(self.min_y[obj_id], by)
                                 self.max_y[obj_id] = max(self.max_y[obj_id], by)
@@ -437,21 +449,34 @@ class VehicleCounterApp:
                                     self.count += 1
                                     self.counted_ids.add(obj_id)
                                     frame_vehicles_count += 1
+                                    if cls == 1:
+                                        self.car_count += 1
+                                    elif cls == 10:
+                                        self.truck_count += 1
                                 self.prev_bottom[obj_id] = by
-                            
-                            print(f"Green light: {self.green_light}, Count: {self.count}, ID: {obj_id}, Bottom Y: {by}")
+
+                            print(f"Is car {cls == 1}, Is truck {cls == 10}, CLS: {cls}, car_count: {self.car_count}, truck_count: {self.truck_count}, ID: {obj_id}, Bottom Y: {by}")
+
+
+
+
+                            # print(f"Green light: {self.green_light}, Count: {self.count}, ID: {obj_id}, Bottom Y: {by}")
                             # Draw vehicle bounding box
                             color = (0, 255, 0) if self.green_light else (0, 0, 255)  # Green if counting, red if not
                             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                             cv2.putText(frame, f"ID:{obj_id}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                             cv2.circle(frame, (cx, by), 3, (255, 255, 0), -1)
                     
+                    # print(f"Car count: {self.car_count}, Truck count: {self.truck_count}, Total count: {self.count}")
+
                     # Store frame data
                     timestamp = self.current_frame_index / self.fps
                     self.traffic_data.append({
                         'frame': self.current_frame_index,
                         'timestamp': timestamp,
                         'vehicles_count': frame_vehicles_count,
+                        'car_count': self.car_count,
+                        'truck_count': self.truck_count,
                         'total_count': self.count,
                         'traffic_light': 'GREEN' if self.green_light else 'RED',
                         'light_duration': self.current_light_duration
@@ -595,7 +620,9 @@ class VehicleCounterApp:
         df = pd.DataFrame(self.traffic_data)
         
         # Basic stats
-        total_vehicles = self.count
+        total_vehicles = df['total_count'].iloc[-1] if not df.empty else 0
+        total_cars = df['car_count'].iloc[-1] if not df.empty else 0
+        total_trucks = df['truck_count'].iloc[-1] if not df.empty else 0
         video_name = os.path.basename(self.video_path) if self.video_path else "Unknown"
         total_duration = df['timestamp'].max() if not df.empty else 0
         
@@ -633,7 +660,6 @@ class VehicleCounterApp:
         tk.Label(header_frame, text=f"Duration: {total_duration:.1f} seconds", font=("Arial", 12), bg="white").pack(anchor='w')
         
         # Create summary stats
-        # Create summary stats
         stats_frame = tk.Frame(report_window, bg="white", padx=20, pady=10)
         stats_frame.pack(fill=tk.X)
         
@@ -646,6 +672,13 @@ class VehicleCounterApp:
         # Left stats
         tk.Label(stats_left, text="Vehicle Count Summary", font=("Arial", 14, "bold"), bg="white").pack(anchor='w', pady=(0,10))
         tk.Label(stats_left, text=f"Total vehicles counted: {total_vehicles}", font=("Arial", 12), bg="white").pack(anchor='w')
+        
+        # Safely calculate percentages to avoid division by zero
+        car_percentage = (total_cars/total_vehicles*100) if total_vehicles > 0 else 0
+        truck_percentage = (total_trucks/total_vehicles*100) if total_vehicles > 0 else 0
+        
+        tk.Label(stats_left, text=f"Cars: {total_cars} ({car_percentage:.1f}%)", font=("Arial", 12), bg="white").pack(anchor='w')
+        tk.Label(stats_left, text=f"Trucks: {total_trucks} ({truck_percentage:.1f}%)", font=("Arial", 12), bg="white").pack(anchor='w')
         avg_per_minute = (total_vehicles / total_duration) * 60 if total_duration > 0 else 0
         tk.Label(stats_left, text=f"Average vehicles per minute: {avg_per_minute:.2f}", font=("Arial", 12), bg="white").pack(anchor='w')
         
@@ -658,11 +691,11 @@ class VehicleCounterApp:
         charts_frame = tk.Frame(report_window, bg="white", padx=20, pady=10)
         charts_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Plot 1: Vehicle count over time
-        fig = plt.Figure(figsize=(10, 6), tight_layout=True)
+        # Create plot with 3 subplots (vehicle distribution, vehicle class, traffic light influence)
+        fig = plt.Figure(figsize=(10, 9), tight_layout=True)
         
         # First plot: Vehicle distribution over time
-        ax1 = fig.add_subplot(211)
+        ax1 = fig.add_subplot(311)
         
         # Calculate vehicles per 5-second window
         if not df.empty:
@@ -680,16 +713,61 @@ class VehicleCounterApp:
             ax1.set_title('Vehicle Distribution Over Time')
             ax1.grid(True, linestyle='--', alpha=0.7)
         
-        # Second plot: Traffic light influence
-        ax2 = fig.add_subplot(212)
+        # Second plot: Vehicle class distribution over time
+        ax2 = fig.add_subplot(312)
+        
+        if not df.empty:
+            # Prepare data for stacked bar chart
+            car_counts = []
+            truck_counts = []
+            
+            for i in range(len(bins)-1):
+                start, end = bins[i], bins[i+1]
+                interval_df = df[(df['timestamp'] >= start) & (df['timestamp'] < end)]
+                
+                # Calculate change in counts during this interval
+                if not interval_df.empty:
+                    # Get the change in counts during this interval
+                    if i == 0:  # First interval
+                        car_change = interval_df['car_count'].iloc[-1] - 0
+                        truck_change = interval_df['truck_count'].iloc[-1] - 0
+                    else:
+                        prev_end = df[df['timestamp'] < start]['timestamp'].idxmax() if not df[df['timestamp'] < start].empty else 0
+                        prev_car = df.loc[prev_end, 'car_count'] if prev_end != 0 else 0
+                        prev_truck = df.loc[prev_end, 'truck_count'] if prev_end != 0 else 0
+                        
+                        car_change = interval_df['car_count'].iloc[-1] - prev_car if not interval_df.empty else 0
+                        truck_change = interval_df['truck_count'].iloc[-1] - prev_truck if not interval_df.empty else 0
+                    
+                    car_counts.append(max(0, car_change))
+                    truck_counts.append(max(0, truck_change))
+                else:
+                    car_counts.append(0)
+                    truck_counts.append(0)
+            
+            # Create stacked bar chart
+            ax2.bar(bins[:-1], car_counts, width=4, alpha=0.7, color='dodgerblue', label='Cars')
+            ax2.bar(bins[:-1], truck_counts, width=4, alpha=0.7, color='indianred', bottom=car_counts, label='Trucks')
+            ax2.set_xlabel('Time (seconds)')
+            ax2.set_ylabel('Vehicles by Class')
+            ax2.set_title('Vehicle Class Distribution Over Time')
+            ax2.legend()
+            ax2.grid(True, linestyle='--', alpha=0.7)
+            
+        
+        # Third plot: Traffic light influence
+        ax3 = fig.add_subplot(313)
         
         # Extract periods where light is green or red
         if not df.empty:
             # Create timeline showing traffic light state and vehicle count
             # Sample at regular intervals to simplify
+            max_time = df['timestamp'].max()
             times = np.arange(0, max_time, 0.5)  # Half-second intervals
             light_states = []
             counts_during_interval = []
+            car_counts_interval = []
+            truck_counts_interval = []
             
             for t in times:
                 # Find closest data point
@@ -701,21 +779,41 @@ class VehicleCounterApp:
                 interval_end = t + 0.25
                 interval_df = df[(df['timestamp'] >= interval_start) & (df['timestamp'] < interval_end)]
                 counts_during_interval.append(interval_df['vehicles_count'].sum())
+                
+                # For car/truck tracking, we'll use the difference in cumulative count
+                before_idx = df[df['timestamp'] <= interval_start]['timestamp'].idxmax() if not df[df['timestamp'] <= interval_start].empty else None
+                after_idx = df[df['timestamp'] >= interval_end]['timestamp'].idxmin() if not df[df['timestamp'] >= interval_end].empty else None
+                
+                car_diff = 0
+                truck_diff = 0
+                
+                if before_idx is not None and after_idx is not None:
+                    car_diff = df.loc[after_idx, 'car_count'] - df.loc[before_idx, 'car_count']
+                    truck_diff = df.loc[after_idx, 'truck_count'] - df.loc[before_idx, 'truck_count']
+                
+                car_counts_interval.append(car_diff)
+                truck_counts_interval.append(truck_diff)
             
             # Plot light state as background (red/green)
-            ax2.fill_between(times, 0, 1, where=[x == 0 for x in light_states], color='red', alpha=0.3, transform=ax2.get_xaxis_transform())
-            ax2.fill_between(times, 0, 1, where=[x == 1 for x in light_states], color='green', alpha=0.3, transform=ax2.get_xaxis_transform())
+            ax3.fill_between(times, 0, 1, where=[x == 0 for x in light_states], color='red', alpha=0.3, transform=ax3.get_xaxis_transform())
+            ax3.fill_between(times, 0, 1, where=[x == 1 for x in light_states], color='green', alpha=0.3, transform=ax3.get_xaxis_transform())
             
             # Plot vehicle count as line
-            ax2_twin = ax2.twinx()
-            ax2_twin.plot(times, counts_during_interval, color='blue', linewidth=1.5)
-            ax2_twin.set_ylabel('Vehicles counted')
+            ax3_twin = ax3.twinx()
+            ax3_twin.plot(times, counts_during_interval, color='blue', linewidth=1.5, label='All Vehicles')
             
-            ax2.set_xlabel('Time (seconds)')
-            ax2.set_ylabel('Traffic Light State')
-            ax2.set_yticks([0, 1])
-            ax2.set_yticklabels(['Red', 'Green'])
-            ax2.set_title('Influence of Traffic Lights on Vehicle Flow')
+            # Optional: Add separate lines for cars and trucks
+            ax3_twin.plot(times, car_counts_interval, 'dodgerblue', linestyle='--', linewidth=1, label='Cars')
+            ax3_twin.plot(times, truck_counts_interval, 'indianred', linestyle='--', linewidth=1, label='Trucks')
+            
+            ax3_twin.set_ylabel('Vehicles counted')
+            ax3_twin.legend(loc='upper right')
+            
+            ax3.set_xlabel('Time (seconds)')
+            ax3.set_ylabel('Traffic Light State')
+            ax3.set_yticks([0, 1])
+            ax3.set_yticklabels(['Red', 'Green'])
+            ax3.set_title('Influence of Traffic Lights on Vehicle Flow')
         
         canvas = FigureCanvasTkAgg(fig, master=charts_frame)
         canvas.draw()
@@ -737,6 +835,24 @@ class VehicleCounterApp:
             tk.Label(stats_frame2, text=f"Vehicles per green light second: {vehicles_per_green_second:.2f}", font=("Arial", 12), bg="white").pack(anchor='w')
             tk.Label(stats_frame2, text=f"Green/red light ratio: {light_ratio:.2f}", font=("Arial", 12), bg="white").pack(anchor='w')
             
+            # Calculate vehicle class statistics during green vs red
+            green_frames = df[df['traffic_light'] == 'GREEN']
+            red_frames = df[df['traffic_light'] == 'RED']
+            
+            # Get first and last entries safely
+            if len(green_frames) > 1:
+                first_green = green_frames.iloc[0]
+                last_green = green_frames.iloc[-1]
+                cars_during_green = last_green['car_count'] - first_green['car_count']
+                trucks_during_green = last_green['truck_count'] - first_green['truck_count']
+            else:
+                cars_during_green = 0
+                trucks_during_green = 0
+            
+            if total_green_time > 0:
+                tk.Label(stats_frame2, text=f"Cars per green light second: {cars_during_green/total_green_time:.2f}", font=("Arial", 12), bg="white").pack(anchor='w')
+                tk.Label(stats_frame2, text=f"Trucks per green light second: {trucks_during_green/total_green_time:.2f}", font=("Arial", 12), bg="white").pack(anchor='w')
+            
             # Recommendations based on data
             recommendations = []
             if vehicles_per_green_second < 0.1:
@@ -748,15 +864,50 @@ class VehicleCounterApp:
                 recommendations.append("Consider increasing green light duration relative to red light")
             elif light_ratio > 0.7:
                 recommendations.append("Consider more balanced green/red light timing")
+            
+            # Add vehicle class specific recommendations
+            car_percentage = total_cars / total_vehicles if total_vehicles > 0 else 0
+            if car_percentage > 0.8:
+                recommendations.append("High proportion of cars - consider optimizing for smaller vehicle throughput")
+            elif car_percentage < 0.2:
+                recommendations.append("High proportion of trucks - consider longer green phases to accommodate slower acceleration")
                 
             if recommendations:
                 tk.Label(stats_frame2, text="Recommendations:", font=("Arial", 12, "bold"), bg="white").pack(anchor='w', pady=(10,5))
                 for i, rec in enumerate(recommendations):
                     tk.Label(stats_frame2, text=f"• {rec}", font=("Arial", 12), bg="white").pack(anchor='w')
         
+        # Add button frame
+        button_frame = tk.Frame(report_window, bg="white", padx=20, pady=10)
+        button_frame.pack(fill=tk.X)
+        
         # Add export button
-        export_btn = tk.Button(report_window, text="Export Report to CSV", command=self.export_to_csv, bg="#4CAF50", fg="white")
-        export_btn.pack(pady=15)
+        export_csv_btn = tk.Button(button_frame, text="Export Report to CSV", command=self.export_to_csv, bg="#4CAF50", fg="white")
+        export_csv_btn.pack(side=tk.LEFT, padx=5, pady=15)
+        
+        # Add save as image button
+        export_img_btn = tk.Button(button_frame, text="Save Report as Image", command=lambda: self.save_report_as_image(fig), bg="#2196F3", fg="white")
+        export_img_btn.pack(side=tk.LEFT, padx=5, pady=15)
+
+    def save_report_as_image(self, fig):
+        """Save the traffic report as an image file"""
+        try:
+            # Ask for save location
+            filename = filedialog.asksaveasfilename(
+                defaultextension=".png",
+                filetypes=[("PNG Files", "*.png"), ("JPEG Files", "*.jpg"), ("PDF Files", "*.pdf")],
+                initialfile=f"traffic_report_{self.session_id}"
+            )
+            
+            if not filename:
+                return
+                
+            # Save figure
+            fig.savefig(filename, dpi=300, bbox_inches='tight')
+            messagebox.showinfo("Export", f"Report image saved successfully to {filename}")
+            
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to save report image: {e}")
 
     def on_seek(self, val):
         if self.is_playing or not self.video_loaded: return
