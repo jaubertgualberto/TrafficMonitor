@@ -3,7 +3,7 @@ import torch
 from ultralytics import YOLO
 
 
-model = YOLO('cluster.pt') 
+model = YOLO('models/cluster.pt') 
 # set model to eval mode
 model.eval()
 
@@ -13,6 +13,12 @@ cap = cv2.VideoCapture(input_path)
 if not cap.isOpened():
     raise IOError(f"Cannot open video {input_path}")
 
+"""
+Classes: {0: 'biker', 1: 'car', 2: 'pedestrian', 3: 'trafficLight', 4: 'trafficLight-Green', 
+            5: 'trafficLight-GreenLeft', 6: 'trafficLight-Red', 7: 'trafficLight-RedLeft',
+            8: 'trafficLight-Yellow', 9: 'trafficLight-YellowLeft', 10: 'truck'}
+"""
+
 
 while True:
     ret, frame = cap.read()
@@ -21,6 +27,8 @@ while True:
 
     results = model(frame, conf=0.5)        
     r = results[0]              
+
+    print(f"Classes: {model.names}")
 
     # get Tensors
     boxes = r.boxes.xyxy.cpu().numpy()
@@ -42,10 +50,11 @@ while True:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,0), 1)
 
     # 5. Show and/or write
-    cv2.imshow('YOLOv5 Detection', frame)
+    cv2.imshow('YOLO Detection', frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap.release()
 cv2.destroyAllWindows()
+

@@ -58,6 +58,7 @@ class VehicleCounterApp:
 
         # report
         self.green_light = False
+        self.red_light = False
         self.green_light_start_time = None
         self.red_light_start_time = None
         self.current_light_duration = 0
@@ -72,7 +73,7 @@ class VehicleCounterApp:
         try:
             device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
             print(f"Using device: {device}")
-            self.model = YOLO('models/yolo11l.pt').to(device)
+            self.model = YOLO('models/cluster.pt').to(device)
             self.model.eval()
 
         except Exception as e:
@@ -294,11 +295,21 @@ class VehicleCounterApp:
         
         self.traffic_light_not_detected = True
 
-       
+        """
+        0: 'biker', 1: 'car', 2: 'pedestrian', 3: 'trafficLight',
+        4: 'trafficLight-Green',  5: 'trafficLight-GreenLeft', 6: 'trafficLight-Red', 
+        7: 'trafficLight-RedLeft', 8: 'trafficLight-Yellow', 9: 'trafficLight-YellowLeft', 
+        10: 'truck'
+        """
+
+        green_classes = [4, 5]
+        yellow_classes = [8, 9]
+        red_classes = [3, 6, 7]
+
         for box in result.boxes:
             class_id = int(box.cls[0])
             
-            if class_id == 9:  # Traffic light class
+            if class_id in [3, 4, 5, 6, 7, 8, 9]:  # 
                 self.traffic_light_not_detected = False
 
                 x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
@@ -309,28 +320,18 @@ class VehicleCounterApp:
                 # Check if traffic light is within or close to the region of interest
                 if (left_bound <= tl_center_x <= right_bound and
                     top_bound <= tl_center_y <= bottom_bound):
+                          
+                    if class_id in green_classes:
+                        self.green_light = True
+                        # break
+                    elif class_id in red_classes:
+                        self.red_light = True
                     
-                    # Crop and check for green in the traffic light patch
-                    patch = frame[y1:y2, x1:x2]
-                    if patch.size > 0: 
-                        # get HSV color space to detect green
-                        hsv = cv2.cvtColor(patch, cv2.COLOR_BGR2HSV)
-                        
-                        # define hsv range to detect green
-                        lower = np.array([40, 50, 50])
-                        upper = np.array([85, 255, 255])
-                        mask = cv2.inRange(hsv, lower, upper)
-                        
-                        
-                        if cv2.countNonZero(mask) > (patch.size * 0.05):
-                            self.green_light = True
-                            break
-                    
-                    # Draw & label traffic lights in the relevant area
-                    traffic_color = (0, 255, 0) if self.green_light else (0, 0, 255)
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), traffic_color, 2)
-                    cv2.putText(frame, f"Traffic Light - {'GREEN' if self.green_light else 'RED'}", 
-                                (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, traffic_color, 2)
+                # Draw & label traffic lights in the relevant area
+                traffic_color = (0, 255, 0) if self.green_light else (0, 0, 255) if self.red_light else (0, 255, 255)
+                cv2.rectangle(frame, (x1, y1), (x2, y2), traffic_color, 2)
+                cv2.putText(frame, f"{self.model.names[class_id]}", 
+                            (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, traffic_color, 2)
 
 
 
@@ -385,7 +386,6 @@ class VehicleCounterApp:
             # print(type(frame))
 
             self.green_light = False
-
             
             self.get_traffic_light_status(frame, result)
 
@@ -406,7 +406,7 @@ class VehicleCounterApp:
                         
 
                         # ignore non-vehicle classes
-                        if cls not in [0, 2, 3, 5, 7]:
+                        if cls not in [0, 1, 10]:  # biker, car, truck
                             continue
                         
 
@@ -414,13 +414,13 @@ class VehicleCounterApp:
                             obj_id = int(box.id)
                             by = y2
                             cx = (x1 + x2) // 2
-
+                    
                             if self.traffic_light_not_detected:
                                 # If no traffic light detected, count all vehicles
                                 print("Traffic light not detected, counting all vehicles.")
                                 self.green_light = True
-                            
-                            
+                        
+                        
                             if obj_id not in self.first_seen:
                                 self.first_seen.add(obj_id)
                                 self.prev_bottom[obj_id] = by
