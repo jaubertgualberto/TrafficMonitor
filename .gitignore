@@ -2,3 +2,5 @@
 *.mp4
 *.csv
 *.png
+__pycache__
+interface.py

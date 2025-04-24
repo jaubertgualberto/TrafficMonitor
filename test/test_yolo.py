@@ -3,7 +3,7 @@ import torch
 from ultralytics import YOLO
 
 
-model = YOLO('models/cluster.pt') 
+model = YOLO('models/best.pt') 
 # set model to eval mode
 model.eval()
 
