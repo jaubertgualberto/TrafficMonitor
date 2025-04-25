@@ -1,72 +1,74 @@
-# Sistema Inteligente de Contagem de Carros em Semáforo
+# Intelligent Traffic Light Vehicle Counting System
 
 ![Interface](imgs/img1.png)
 
-Este repositório contém o código do projeto de um sistema inteligente para contagem de veículos em tempo real em um semáforo. 
+This repository contains the code for an intelligent real-time vehicle counting system at a traffic light.
 
- 
-- **Vídeos utilizados:** [Friantroulette YouTube Channel](https://www.youtube.com/@friantroulette)
+- **Videos used:** [Friantroulette YouTube Channel](https://www.youtube.com/@friantroulette)
 
-## Estrutura de Diretórios
+## Directory Structure
 
 ```plaintext
 ├── data/                  
 │   ├── __init__.py
 │   └── data_manager.py    
-├── gui/                   # Interface gráfica
+├── gui/                   # Graphical interface
 │   ├── __init__.py
 │   ├── app.py             
 │   └── gui.py             
-├── track/                 # Rastreamento de veículos
+├── track/                 # Vehicle tracking
 │   ├── __init__.py
-│   └── tracker.py        
-├── models/                # Pesos do modelo treinado
-│   └── model_main.pt           # <-- Coloque aqui o peso do modelo
-├── reports/               # Saídas e relatórios
-│   ├── report.csv         # Exemplo de relatório em CSV
-│   └── report.png         # Exemplo de relatório em imagem
-├── main.py                # Ponto de entrada da aplicação
+│   └── tracker.py         
+├── models/                # Trained model weights
+│   └── model_main.pt      # <-- Place the model weights here
+├── reports/               # Outputs and reports
+│   ├── report.csv         # Example report in CSV format
+│   └── report.png         # Example report image
+├── main.py                # Application entry point
 └── README.md              
-```  
+```
 
-## Pré-requisitos  
+## Prerequisites  
 
-- Python 3.7 ou superior  
+- Python 3.7 or higher  
 - pip  
 
-Instale as dependências:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Download dos Pesos do Modelo
+## Download the Model Weights
 
-Antes de executar o sistema, faça o download dos pesos do modelo treinado através do link abaixo:
+Before running the system, download the trained model weights from the following link:
 
-[Download do modelo treinado](https://drive.google.com/file/d/12CviN5DbXcsvD0IInRRMEFROtc0dFAB5/view?usp=sharing)
+[Download trained model](https://drive.google.com/file/d/12CviN5DbXcsvD0IInRRMEFROtc0dFAB5/view?usp=sharing)
 
-O arquivo deve ficar em models/model_main.py
+The file should be placed in `models/model_main.py`.
 
-## Uso  
+## Usage  
 
-Execute a aplicação completa (GUI + contagem):
+Run the complete application (GUI + counting):
 
 ```bash
 python main.py
 ```
-# Componentes e lógica da interface
 
-1. **data_manager.py**: carrega e pré-processa os frames dos vídeos  
-2. **tracker.py**: executa o rastreamento de veículos objeto a objeto  
-3. **gui.py / app.py**: apresenta interface em tempo real com contagem atualizada  
-4. **main.py**: integra todos os módulos e inicia a aplicação
+## Initial Operation
 
+1. In the interface, click **Load video** and select the desired video.
+2. After the video loads, click two distinct points on the video preview area to define the counting baseline.
+3. Click **Play** and the system will begin processing frames and display the real-time count in the interface.
 
+## Interface Components and Logic
 
-## Contato  
+1. **data_manager.py**: loads and pre-processes video frames  
+2. **tracker.py**: performs object-by-object vehicle tracking  
+3. **gui.py / app.py**: presents the real-time interface with updated counts  
+4. **main.py**: integrates all modules and starts the application
 
-Entre em contato pelo e-mail: jglg@cin.ufpe.br
+## Contact  
 
-
+For questions, contact: jglg@cin.ufpe.br
 
