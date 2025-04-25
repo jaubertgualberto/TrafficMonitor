@@ -3,12 +3,12 @@ import torch
 from ultralytics import YOLO
 
 
-model = YOLO('models/best.pt') 
+model = YOLO('models/model_main.pt') 
 # set model to eval mode
 model.eval()
 
 
-input_path = 'inputs/input8.mp4'   
+input_path = 'inputs/input7.mp4'   
 cap = cv2.VideoCapture(input_path)
 if not cap.isOpened():
     raise IOError(f"Cannot open video {input_path}")
@@ -16,7 +16,7 @@ if not cap.isOpened():
 """
 Classes: {0: 'biker', 1: 'car', 2: 'pedestrian', 3: 'trafficLight', 4: 'trafficLight-Green', 
             5: 'trafficLight-GreenLeft', 6: 'trafficLight-Red', 7: 'trafficLight-RedLeft',
-            8: 'trafficLight-Yellow', 9: 'trafficLight-YellowLeft', 10: 'truck'}
+            8: 'trafficLight-Yellow', 9: 'trafficLight-YellowLeft', 10: 'truck', 11: 'motorcycle'}
 """
 
 

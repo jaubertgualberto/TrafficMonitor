@@ -1,5 +1,4 @@
 import os
-import time
 import csv
 import pandas as pd
 import numpy as np
@@ -162,7 +161,9 @@ class TrafficDataManager:
 
         print(f"Session data appended to {sessions_file} and {frames_file}")
         
-    def show_report(self,  total_count=0, car_count=0, truck_count=0):
+
+        
+    def show_report(self,  total_count=0, car_count=0, truck_count=0, motorcycle_count=0):
         """Show traffic analysis report"""
         if not self.traffic_data:
             messagebox.showinfo("Report", "No data to generate report")
@@ -178,9 +179,10 @@ class TrafficDataManager:
         df = pd.DataFrame(self.traffic_data)
         
         # Basic stats
-        total_vehicles = total_count
-        total_cars = car_count
-        total_trucks = truck_count
+        total_vehicles = df['total_count'].iloc[-1]
+        total_cars = df['car_count'].iloc[-1]
+        total_trucks = df['truck_count'].iloc[-1]
+        total_motorcycle = df['motorcycle_count'].iloc[-1]
         video_name = os.path.basename(self.video_path) if self.video_path else "Unknown"
         total_duration = df['timestamp'].max() if not df.empty else 0
         
@@ -195,7 +197,7 @@ class TrafficDataManager:
                 current_color = row['traffic_light']
                 start_time = row['timestamp']
                 continue
-                
+
             if row['traffic_light'] != current_color:  # Light changed
                 duration = row['timestamp'] - start_time
                 if current_color == 'GREEN':
@@ -204,7 +206,16 @@ class TrafficDataManager:
                     red_durations.append(duration)
                 current_color = row['traffic_light']
                 start_time = row['timestamp']
-        
+
+        # Verifica se a última luz continuou até o final
+        end_time = df.iloc[-1]['timestamp']
+        if end_time > start_time:
+            duration = end_time - start_time
+            if current_color == 'GREEN':
+                green_durations.append(duration)
+            else:
+                red_durations.append(duration)
+
         avg_green = sum(green_durations) / len(green_durations) if green_durations else 0
         avg_red = sum(red_durations) / len(red_durations) if red_durations else 0
         
@@ -234,9 +245,12 @@ class TrafficDataManager:
         # Safely calculate percentages to avoid division by zero
         car_percentage = (total_cars/total_vehicles*100) if total_vehicles > 0 else 0
         truck_percentage = (total_trucks/total_vehicles*100) if total_vehicles > 0 else 0
+        motorcycle_percentage = (total_motorcycle/total_vehicles*100) if total_vehicles > 0 else 0
         
         tk.Label(stats_left, text=f"Cars: {total_cars} ({car_percentage:.1f}%)", font=("Arial", 12), bg="white").pack(anchor='w')
         tk.Label(stats_left, text=f"Trucks: {total_trucks} ({truck_percentage:.1f}%)", font=("Arial", 12), bg="white").pack(anchor='w')
+        tk.Label(stats_left, text=f"Motorcycles: {total_motorcycle} ({motorcycle_percentage:.1f}%)", font=("Arial", 12), bg="white").pack(anchor='w')
+
         avg_per_minute = (total_vehicles / total_duration) * 60 if total_duration > 0 else 0
         tk.Label(stats_left, text=f"Average vehicles per minute: {avg_per_minute:.2f}", font=("Arial", 12), bg="white").pack(anchor='w')
         
@@ -278,6 +292,7 @@ class TrafficDataManager:
             # Prepare data for stacked bar chart
             car_counts = []
             truck_counts = []
+            motorcycle_counts = []
             
             for i in range(len(bins)-1):
                 start, end = bins[i], bins[i+1]
@@ -289,23 +304,30 @@ class TrafficDataManager:
                     if i == 0:  # First interval
                         car_change = interval_df['car_count'].iloc[-1] - 0
                         truck_change = interval_df['truck_count'].iloc[-1] - 0
+                        motorcycle_change = interval_df['motorcycle_count'].iloc[-1] - 0
                     else:
                         prev_end = df[df['timestamp'] < start]['timestamp'].idxmax() if not df[df['timestamp'] < start].empty else 0
                         prev_car = df.loc[prev_end, 'car_count'] if prev_end != 0 else 0
                         prev_truck = df.loc[prev_end, 'truck_count'] if prev_end != 0 else 0
+                        prev_motorcycle = df.loc[prev_end, 'motorcycle_count'] if prev_end != 0 else 0
                         
                         car_change = interval_df['car_count'].iloc[-1] - prev_car if not interval_df.empty else 0
                         truck_change = interval_df['truck_count'].iloc[-1] - prev_truck if not interval_df.empty else 0
+                        motorcycle_change = interval_df['motorcycle_count'].iloc[-1] - prev_motorcycle if not interval_df.empty else 0
                     
                     car_counts.append(max(0, car_change))
                     truck_counts.append(max(0, truck_change))
+                    motorcycle_counts.append(max(0, motorcycle_change))
                 else:
                     car_counts.append(0)
                     truck_counts.append(0)
+                    motorcycle_counts.append(0)
             
             # Create stacked bar chart
             ax2.bar(bins[:-1], car_counts, width=4, alpha=0.7, color='dodgerblue', label='Cars')
             ax2.bar(bins[:-1], truck_counts, width=4, alpha=0.7, color='indianred', bottom=car_counts, label='Trucks')
+            ax2.bar(bins[:-1], motorcycle_counts, width=4, alpha=0.7, color='gold', bottom=np.array(car_counts) + np.array(truck_counts), label='Motorcycles')
+
             ax2.set_xlabel('Time (seconds)')
             ax2.set_ylabel('Vehicles by Class')
             ax2.set_title('Vehicle Class Distribution Over Time')
@@ -326,6 +348,7 @@ class TrafficDataManager:
             counts_during_interval = []
             car_counts_interval = []
             truck_counts_interval = []
+            motorcycle_counts_interval = []
             
             for t in times:
                 # Find closest data point
@@ -344,13 +367,16 @@ class TrafficDataManager:
                 
                 car_diff = 0
                 truck_diff = 0
+                motorcycle_diff = 0
                 
                 if before_idx is not None and after_idx is not None:
                     car_diff = df.loc[after_idx, 'car_count'] - df.loc[before_idx, 'car_count']
                     truck_diff = df.loc[after_idx, 'truck_count'] - df.loc[before_idx, 'truck_count']
+                    motorcycle_diff = df.loc[after_idx, 'motorcycle_count'] - df.loc[before_idx, 'motorcycle_count']
                 
                 car_counts_interval.append(car_diff)
                 truck_counts_interval.append(truck_diff)
+                motorcycle_counts_interval.append(motorcycle_diff)
             
             # Plot light state as background (red/green)
             ax3.fill_between(times, 0, 1, where=[x == 0 for x in light_states], color='red', alpha=0.3, transform=ax3.get_xaxis_transform())
@@ -363,6 +389,7 @@ class TrafficDataManager:
             # Optional: Add separate lines for cars and trucks
             ax3_twin.plot(times, car_counts_interval, 'dodgerblue', linestyle='--', linewidth=1, label='Cars')
             ax3_twin.plot(times, truck_counts_interval, 'indianred', linestyle='--', linewidth=1, label='Trucks')
+            ax3_twin.plot(times, motorcycle_counts_interval, 'gold', linestyle='--', linewidth=1, label='Motorcycles')
             
             ax3_twin.set_ylabel('Vehicles counted')
             ax3_twin.legend(loc='upper right')
@@ -403,14 +430,17 @@ class TrafficDataManager:
                 last_green = green_frames.iloc[-1]
                 cars_during_green = last_green['car_count'] - first_green['car_count']
                 trucks_during_green = last_green['truck_count'] - first_green['truck_count']
+                motorcycles_during_green = last_green['motorcycle_count'] - first_green['motorcycle_count']
             else:
                 cars_during_green = 0
                 trucks_during_green = 0
+                motorcycles_during_green = 0
             
             if total_green_time > 0:
                 tk.Label(stats_frame2, text=f"Cars per green light second: {cars_during_green/total_green_time:.2f}", font=("Arial", 12), bg="white").pack(anchor='w')
                 tk.Label(stats_frame2, text=f"Trucks per green light second: {trucks_during_green/total_green_time:.2f}", font=("Arial", 12), bg="white").pack(anchor='w')
-            
+                tk.Label(stats_frame2, text=f"Motorcycles per green light second: {motorcycles_during_green/total_green_time:.2f}", font=("Arial", 12), bg="white").pack(anchor='w')
+
             # Recommendations based on data
             recommendations = []
             if vehicles_per_green_second < 0.1:
@@ -425,11 +455,18 @@ class TrafficDataManager:
             
             # Add vehicle class specific recommendations
             car_percentage = total_cars / total_vehicles if total_vehicles > 0 else 0
+            motorcycle_percentage = total_motorcycle / total_vehicles if total_vehicles > 0 else 0
+
             if car_percentage > 0.8:
                 recommendations.append("High proportion of cars - consider optimizing for smaller vehicle throughput")
             elif car_percentage < 0.2:
                 recommendations.append("High proportion of trucks - consider longer green phases to accommodate slower acceleration")
                 
+            if motorcycle_percentage > 0.5:
+                recommendations.append("High proportion of motorcycles - consider optimizing traffic flow for two-wheelers")
+            elif motorcycle_percentage < 0.1:
+                recommendations.append("Low proportion of motorcycles - ensure traffic rules accommodate all vehicle types")
+
             if recommendations:
                 tk.Label(stats_frame2, text="Recommendations:", font=("Arial", 12, "bold"), bg="white").pack(anchor='w', pady=(10,5))
                 for i, rec in enumerate(recommendations):

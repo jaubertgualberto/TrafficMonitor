@@ -38,6 +38,7 @@ class VehicleTracker:
         self.count = 0
         self.car_count = 0
         self.truck_count = 0
+        self.motorcycle_count = 0
         self.green_light_start_time = None
         self.red_light_start_time = time.time()  # Initialize with red
         self.current_light_duration = 0
@@ -193,6 +194,8 @@ class VehicleTracker:
                             self.car_count += 1
                         elif cls == 10:
                             self.truck_count += 1
+                        elif cls == 11:
+                            self.motorcycle_count += 1
 
                 else:
                     self.min_y[obj_id] = min(self.min_y[obj_id], by)
@@ -205,6 +208,8 @@ class VehicleTracker:
                             self.car_count += 1
                         elif cls == 10:
                             self.truck_count += 1
+                        elif cls == 11:
+                            self.motorcycle_count += 1
                     self.prev_bottom[obj_id] = by
 
                 # Draw vehicle bounding box

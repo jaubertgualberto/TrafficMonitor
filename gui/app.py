@@ -10,7 +10,7 @@ import torch
 from datetime import datetime
 
 from gui.gui import VehicleCounterGUI
-from models.tracker import VehicleTracker
+from track.tracker import VehicleTracker
 from data.data_manager import TrafficDataManager
 
 class VehicleCounterApp:
@@ -47,7 +47,7 @@ class VehicleCounterApp:
             print(f"Using device: {device}")
             
             # Load YOLO model
-            model = YOLO('models/cluster.pt').to(device)
+            model = YOLO('models/model_main.pt').to(device)
             model.eval()
             
             # Initialize the tracker with the model
@@ -169,6 +169,7 @@ class VehicleCounterApp:
                     'vehicles_count': frame_vehicles_count,
                     'car_count': self.tracker.car_count,
                     'truck_count': self.tracker.truck_count,
+                    'motorcycle_count': self.tracker.motorcycle_count,
                     'total_count': self.tracker.count,
                     'traffic_light': 'GREEN' if self.tracker.green_light else 'RED',
                     'light_duration': self.tracker.current_light_duration
