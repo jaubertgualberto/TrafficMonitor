@@ -17,9 +17,9 @@ class VehicleCounterApp:
     def __init__(self, root):
         # Model initialization
         self.model = None
-        self.tracker = None  # Will hold our VehicleTracker instance
+        self.tracker = None  # hold our VehicleTracker instance
         
-        # video and UI-related variables
+    
         self.video_path = None
         self.cap = None
         self.frame = None
@@ -31,14 +31,12 @@ class VehicleCounterApp:
         self.fps = 25
         self.trafficWarning = True
 
-        # Initialize the data manager
+
         self.data_manager = TrafficDataManager()
         self.data_manager.set_root(root)
-        
-        # Initialize GUI (pass self as controller)
+         
         self.gui = VehicleCounterGUI(root, self)
-        
-        # Load the model
+        self
         self.load_model()
         
     def load_model(self):
@@ -50,7 +48,7 @@ class VehicleCounterApp:
             model = YOLO('models/model_main.pt').to(device)
             model.eval()
             
-            # Initialize the tracker with the model
+            # Initialize the tracker 
             self.model = model
             self.tracker = VehicleTracker(model)
             
@@ -196,7 +194,7 @@ class VehicleCounterApp:
         # Save session data
         self.data_manager.save_session_data()
         
-        # Enable report buttons
+        # Enable report buttons when finished playing
         self.gui.report_btn.config(state=tk.NORMAL)
         self.gui.export_btn.config(state=tk.NORMAL)
 

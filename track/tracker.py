@@ -76,7 +76,7 @@ class VehicleTracker:
         top_bound = 0 
         bottom_bound = line_y 
 
-        # Draw region of interest (optional, for debugging)
+        # Draw region of interest 
         cv2.rectangle(frame, (left_bound, top_bound), (right_bound, bottom_bound), (255, 255, 0), 1)
         
         # Store previous light state
@@ -168,7 +168,7 @@ class VehicleTracker:
             cls = box.cls[0].item()
             
             # Ignore non-vehicle classes
-            if cls not in [1, 10]:  # car, truck
+            if cls not in [1, 10, 11]:  # car, truck, motorcycle
                 continue
             
             if hasattr(box, 'id'):
