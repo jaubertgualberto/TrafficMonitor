@@ -359,7 +359,11 @@ class TrafficDataManager:
                 interval_start = t - 0.25
                 interval_end = t + 0.25
                 interval_df = df[(df['timestamp'] >= interval_start) & (df['timestamp'] < interval_end)]
-                counts_during_interval.append(interval_df['vehicles_count'].sum())
+                if interval_df.empty:
+                    counts_during_interval.append(0)
+                else:
+                    # Get the highest total_count in this interval
+                    counts_during_interval.append(interval_df['total_count'].max())
                 
                 # For car/truck tracking, we'll use the difference in cumulative count
                 before_idx = df[df['timestamp'] <= interval_start]['timestamp'].idxmax() if not df[df['timestamp'] <= interval_start].empty else None
@@ -443,29 +447,35 @@ class TrafficDataManager:
 
             # Recommendations based on data
             recommendations = []
-            if vehicles_per_green_second < 0.1:
-                recommendations.append("Green light duration may be too long for current traffic volume")
-            elif vehicles_per_green_second > 0.5:
-                recommendations.append("Green light duration may be too short for current traffic volume")
-                
-            if light_ratio < 0.3:
-                recommendations.append("Consider increasing green light duration relative to red light")
-            elif light_ratio > 0.7:
-                recommendations.append("Consider more balanced green/red light timing")
-            
-            # Add vehicle class specific recommendations
-            car_percentage = total_cars / total_vehicles if total_vehicles > 0 else 0
-            motorcycle_percentage = total_motorcycle / total_vehicles if total_vehicles > 0 else 0
+            # Data-driven recommendations
+            recommendations = []
 
-            if car_percentage > 0.8:
-                recommendations.append("High proportion of cars - consider optimizing for smaller vehicle throughput")
-            elif car_percentage < 0.2:
-                recommendations.append("High proportion of trucks - consider longer green phases to accommodate slower acceleration")
-                
-            if motorcycle_percentage > 0.5:
-                recommendations.append("High proportion of motorcycles - consider optimizing traffic flow for two-wheelers")
-            elif motorcycle_percentage < 0.1:
-                recommendations.append("Low proportion of motorcycles - ensure traffic rules accommodate all vehicle types")
+            # 1) Adjust green light duration based on vehicles per second of green
+            if vehicles_per_green_second < 0.2:
+                recommendations.append(
+                    "Green phase is too long for current traffic volume; consider shortening it."
+                )
+            elif vehicles_per_green_second > 0.4:
+                recommendations.append(
+                    "Green phase is too short for current traffic volume; consider extending it."
+                )
+
+            # 2) Balance overall green/red timing
+            if light_ratio < 0.4 or light_ratio > 0.6:
+                recommendations.append(
+                    "Imbalance between green and red durations detected; adjust cycle for more even timing."
+                )
+
+            # 3) Prioritize dominant vehicle type
+            if car_percentage > 0.7:
+                recommendations.append(
+                    "High share of cars—favor shorter, more frequent green phases for light vehicles."
+                )
+            elif motorcycle_percentage > 0.5:
+                recommendations.append(
+                    "High share of motorcycles—tune signal timing to improve two-wheeler flow."
+                )
+
 
             if recommendations:
                 tk.Label(stats_frame2, text="Recommendations:", font=("Arial", 12, "bold"), bg="white").pack(anchor='w', pady=(10,5))
@@ -478,10 +488,10 @@ class TrafficDataManager:
         
         # Add export button
         export_csv_btn = tk.Button(button_frame, text="Export Report to CSV", command=self.export_to_csv, bg="#4CAF50", fg="white")
-        export_csv_btn.pack(side=tk.LEFT, padx=5, pady=15)
+        export_csv_btn.pack(side=tk.RIGHT, padx=5, pady=15)
         
         # Add save as image button
         export_img_btn = tk.Button(button_frame, text="Save Report as Image", command=lambda: self.save_report_as_image(fig), bg="#2196F3", fg="white")
-        export_img_btn.pack(side=tk.LEFT, padx=5, pady=15)
+        export_img_btn.pack(side=tk.RIGHT, padx=5, pady=15)
         
         return fig
