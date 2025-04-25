@@ -1,6 +1,5 @@
 import cv2
 import time
-import numpy as np
 import torch
 
 class VehicleTracker:
@@ -89,7 +88,7 @@ class VehicleTracker:
         0: 'biker', 1: 'car', 2: 'pedestrian', 3: 'trafficLight',
         4: 'trafficLight-Green',  5: 'trafficLight-GreenLeft', 6: 'trafficLight-Red', 
         7: 'trafficLight-RedLeft', 8: 'trafficLight-Yellow', 9: 'trafficLight-YellowLeft', 
-        10: 'truck'
+        10: 'truck', 11: 'motorcycle'
         """
 
         green_classes = [4, 5]

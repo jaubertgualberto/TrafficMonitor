@@ -1,13 +1,6 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 import cv2
-import os
-import numpy as np
-from threading import Thread
-import time
-import torch
-from datetime import datetime
 
 class VehicleCounterGUI:
     def __init__(self, root, controller):
