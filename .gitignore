@@ -1,5 +1,4 @@
 *.pt
-*.mp4
 *.csv
 *.png
 __pycache__
